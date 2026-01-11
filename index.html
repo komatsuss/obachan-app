@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おばあちゃんのお助けアプリ</title>
+    <style>
+        /* 全体の設定 */
+        body {
+            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 60%;
+        }
+
+        button {
+            flex: 1;
+            border: none;
+            border-radius: 20px;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 8px 0 #999;
+            transition: all 0.1s;
+        }
+
+        button:active {
+            transform: translateY(4px);
+            box-shadow: 0 4px 0 #666;
+        }
+
+        button:disabled {
+            background-color: #ccc !important;
+            box-shadow: none !important;
+            transform: translateY(4px);
+            color: #666 !important;
+        }
+
+        .btn-meal { background-color: #FF8C00; color: white; }
+        .btn-buy { background-color: #2E8B57; color: white; }
+        .btn-call { background-color: #FFD700; color: black; }
+
+        /* 掲示板エリア */
+        .message-board {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fffde7; /* 掲示板らしく少し黄色っぽく */
+            border: 5px solid #333;
+            border-radius: 15px;
+            height: 35%;
+            overflow-y: auto;
+        }
+
+        #boardMessage {
+            font-size: 36px; /* 文字をさらに大きく */
+            font-weight: bold;
+            color: #d32f2f; /* 目立つ色 */
+            margin: 10px 0;
+            white-space: pre-wrap; /* 改行を反映させる */
+        }
+
+        #notification {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0,0,0,0.9);
+            color: white;
+            padding: 40px;
+            border-radius: 20px;
+            font-size: 40px;
+            text-align: center;
+            z-index: 100;
+            width: 80%;
+        }
+    </style>
+</head>
+<body onload="updateMessage()"> <div id="notification"></div>
+
+    <div class="button-container">
+        <button id="mealBtn" class="btn-meal" onclick="sendToGas('🍚 ごはん食べたよ')">
+            🍚 ごはん食べたよ
+        </button>
+        <button id="buyBtn" class="btn-buy" onclick="sendToGas('🎤 これ買って')">
+            🎤 これ買って
+        </button>
+        <button id="callBtn" class="btn-call" onclick="sendToGas('📞 家族に電話したいよ')">
+            📞 家族に電話する
+        </button>
+    </div>
+
+    <div class="message-board">
+        <div style="font-size: 20px; color: #666;">🏠 家族からのメッセージ</div>
+        <div id="boardMessage">読み込み中...</div>
+    </div>
+
+<script>
+        // 【重要】あなたのGASのウェブアプリURLをここに貼り付けてください
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbwRTxgPixvXGdW88lr14m2irbraEkAShYwcma2Ovv4GzBKz78YtoSYIQ6VoARUamKWH/exec";
+
+        // --- 1. Slackへ通知を送る機能 ---
+        async function sendToGas(message) {
+            const buttons = document.querySelectorAll('button');
+            buttons.forEach(btn => btn.disabled = true);
+            showPopup("家族にお知らせしています...");
+
+            try {
+                // 通知を送る際も「redirect: "follow"」を入れるとより安定します
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ text: message }),
+                    headers: { 'Content-Type': 'text/plain' },
+                    redirect: "follow" 
+                });
+                showPopup(message + "\nを家族に送りました！");
+            } catch (error) {
+                console.error("送信エラー:", error);
+                showPopup("うまく送れませんでした。");
+            }
+
+            setTimeout(() => {
+                buttons.forEach(btn => btn.disabled = false);
+                hidePopup();
+            }, 5000);
+        }
+
+        // --- 2. スプレッドシートからメッセージを読み込む機能 ---
+        async function updateMessage() {
+            try {
+                // 【ここが修正ポイント！】redirect: "follow" を追加しました
+                const response = await fetch(GAS_URL, { redirect: "follow" });
+                
+                // データの形式をチェックして表示
+                const data = await response.json();
+                if (data.message) {
+                    document.getElementById('boardMessage').innerText = data.message;
+                }
+            } catch (error) {
+                console.error("読み込みエラー:", error);
+                // エラー時は「読み込み中...」のままにならないよう配慮
+                if(document.getElementById('boardMessage').innerText === "読み込み中...") {
+                    document.getElementById('boardMessage').innerText = "メッセージはまだありません";
+                }
+            }
+        }
+
+        // --- 3. 5分おきに自動更新する設定 ---
+        setInterval(updateMessage, 300000);
+
+        function showPopup(text) {
+            const popup = document.getElementById('notification');
+            popup.innerText = text;
+            popup.style.display = 'block';
+        }
+
+        function hidePopup() {
+            document.getElementById('notification').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
