@@ -107,8 +107,8 @@
     </div>
 
 <script>
-        // 【重要】あなたのGASのウェブアプリURLをここに貼り付けてください
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbwRTxgPixvXGdW88lr14m2irbraEkAShYwcma2Ovv4GzBKz78YtoSYIQ6VoARUamKWH/exec";
+        // 【重要】最新のGASのウェブアプリURLをここに貼り付けてください
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbyiri90nmAFs6RZNqOeqqtYsymHbGxl9VsqoqtUBKiSS02_Si6KX-v7wb02y4_ulMzO/exec";
 
         // --- 1. Slackへ通知を送る機能 ---
         async function sendToGas(message) {
@@ -117,7 +117,7 @@
             showPopup("家族にお知らせしています...");
 
             try {
-                // 通知を送る際も「redirect: "follow"」を入れるとより安定します
+                // 通知（POST）はこれまでの方式で大丈夫です
                 await fetch(GAS_URL, {
                     method: 'POST',
                     body: JSON.stringify({ text: message }),
@@ -136,29 +136,33 @@
             }, 5000);
         }
 
-        // --- 2. スプレッドシートからメッセージを読み込む機能 ---
-        async function updateMessage() {
-            try {
-                // 【ここが修正ポイント！】redirect: "follow" を追加しました
-                const response = await fetch(GAS_URL, { redirect: "follow" });
-                
-                // データの形式をチェックして表示
-                const data = await response.json();
-                if (data.message) {
-                    document.getElementById('boardMessage').innerText = data.message;
-                }
-            } catch (error) {
-                console.error("読み込みエラー:", error);
-                // エラー時は「読み込み中...」のままにならないよう配慮
-                if(document.getElementById('boardMessage').innerText === "読み込み中...") {
-                    document.getElementById('boardMessage').innerText = "メッセージはまだありません";
-                }
+        // --- 2. スプレッドシートからメッセージを読み込む機能（JSONP方式） ---
+        // これが「ステップ2」で修正した新しい読み込み方です
+        function updateMessage() {
+            const oldScript = document.getElementById('jsonp-script');
+            if (oldScript) oldScript.remove();
+
+            const script = document.createElement('script');
+            script.id = 'jsonp-script';
+            // GASに「handleResponseという関数でデータを返してね」と頼みます
+            script.src = `${GAS_URL}?callback=handleResponse`;
+            document.body.appendChild(script);
+        }
+
+        // GASからデータが届いた時に、自動的にこの関数が実行されます
+        function handleResponse(data) {
+            if (data && data.message) {
+                document.getElementById('boardMessage').innerText = data.message;
             }
         }
 
-        // --- 3. 5分おきに自動更新する設定 ---
+        // --- 3. 自動更新の設定 ---
+        // 起動時に1回実行
+        updateMessage();
+        // 5分おきに自動更新（300000ミリ秒）
         setInterval(updateMessage, 300000);
 
+        // --- 4. 画面表示の補助機能 ---
         function showPopup(text) {
             const popup = document.getElementById('notification');
             popup.innerText = text;
