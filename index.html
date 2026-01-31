@@ -5,173 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>おばあちゃんのお助けアプリ</title>
     <style>
-        /* 全体の設定 */
-        body {
-            font-family: "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
-            margin: 0;
-            padding: 10px;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-
-        .button-container {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            height: 60%;
-        }
-
-        button {
-            flex: 1;
-            border: none;
-            border-radius: 20px;
-            font-size: 40px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 8px 0 #999;
-            transition: all 0.1s;
-        }
-
-        button:active {
-            transform: translateY(4px);
-            box-shadow: 0 4px 0 #666;
-        }
-
-        button:disabled {
-            background-color: #ccc !important;
-            box-shadow: none !important;
-            transform: translateY(4px);
-            color: #666 !important;
-        }
-
+        body { font-family: sans-serif; margin: 0; padding: 10px; background-color: #f0f0f0; display: flex; flex-direction: column; height: 100vh; }
+        .button-container { display: flex; flex-direction: column; gap: 15px; height: 60%; }
+        button { flex: 1; border: none; border-radius: 20px; font-size: 40px; font-weight: bold; cursor: pointer; box-shadow: 0 8px 0 #999; }
+        button:active { transform: translateY(4px); box-shadow: 0 4px 0 #666; }
         .btn-meal { background-color: #FF8C00; color: white; }
         .btn-buy { background-color: #2E8B57; color: white; }
         .btn-call { background-color: #FFD700; color: black; }
-
-        /* 掲示板エリア */
-        .message-board {
-            margin-top: 20px;
-            padding: 15px;
-            background-color: #fffde7; /* 掲示板らしく少し黄色っぽく */
-            border: 5px solid #333;
-            border-radius: 15px;
-            height: 35%;
-            overflow-y: auto;
-        }
-
-        #boardMessage {
-            font-size: 36px; /* 文字をさらに大きく */
-            font-weight: bold;
-            color: #d32f2f; /* 目立つ色 */
-            margin: 10px 0;
-            white-space: pre-wrap; /* 改行を反映させる */
-        }
-
-        #notification {
-            display: none;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0,0,0,0.9);
-            color: white;
-            padding: 40px;
-            border-radius: 20px;
-            font-size: 40px;
-            text-align: center;
-            z-index: 100;
-            width: 80%;
-        }
+        .message-board { margin-top: 20px; padding: 15px; background-color: #fffde7; border: 5px solid #333; border-radius: 15px; height: 35%; overflow-y: auto; }
+        #boardMessage { font-size: 36px; font-weight: bold; color: #d32f2f; margin: 10px 0; white-space: pre-wrap; }
+        #notification { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(0,0,0,0.9); color: white; padding: 40px; border-radius: 20px; font-size: 40px; text-align: center; z-index: 100; width: 80%; }
     </style>
 </head>
-<body onload="updateMessage()"> <div id="notification"></div>
-
+<body>
+    <div id="notification"></div>
     <div class="button-container">
-        <button id="mealBtn" class="btn-meal" onclick="sendToGas('🍚 ごはん食べたよ')">
-            🍚 ごはん食べたよ
-        </button>
-        <button id="buyBtn" class="btn-buy" onclick="sendToGas('🎤 これ買って')">
-            🎤 これ買って
-        </button>
-        <button id="callBtn" class="btn-call" onclick="sendToGas('📞 家族に電話したいよ')">
-            📞 家族に電話する
-        </button>
+        <button class="btn-meal" onclick="sendToGas('🍚 ごはん食べたよ')">🍚 ごはん食べたよ</button>
+        <button class="btn-buy" onclick="sendToGas('🎤 これ買って')">🎤 これ買って</button>
+        <button class="btn-call" onclick="sendToGas('📞 家族に電話したいよ')">📞 家族に電話する</button>
     </div>
-
     <div class="message-board">
         <div style="font-size: 20px; color: #666;">🏠 家族からのメッセージ</div>
         <div id="boardMessage">読み込み中...</div>
     </div>
 
-<script>
-        // 【重要】最新のGASのウェブアプリURLをここに貼り付けてください
-        const GAS_URL = "https://script.google.com/macros/s/AKfycbyiri90nmAFs6RZNqOeqqtYsymHbGxl9VsqoqtUBKiSS02_Si6KX-v7wb02y4_ulMzO/exec";
+    <script>
+        // ★ここに最新のGAS URLを貼る★
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzmPYufMu_AxKUv75WpknfwYUniU8fUclLTFeYIGgbT2HfxL6PlpW5MSMo-HCoywT_5/exec";
 
-        // --- 1. Slackへ通知を送る機能 ---
-        async function sendToGas(message) {
-            const buttons = document.querySelectorAll('button');
-            buttons.forEach(btn => btn.disabled = true);
-            showPopup("家族にお知らせしています...");
-
-            try {
-                // 通知（POST）はこれまでの方式で大丈夫です
-                await fetch(GAS_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({ text: message }),
-                    headers: { 'Content-Type': 'text/plain' },
-                    redirect: "follow" 
-                });
-                showPopup(message + "\nを家族に送りました！");
-            } catch (error) {
-                console.error("送信エラー:", error);
-                showPopup("うまく送れませんでした。");
-            }
-
-            setTimeout(() => {
-                buttons.forEach(btn => btn.disabled = false);
-                hidePopup();
-            }, 5000);
-        }
-
-        // --- 2. スプレッドシートからメッセージを読み込む機能（JSONP方式） ---
-        // これが「ステップ2」で修正した新しい読み込み方です
-        function updateMessage() {
-            const oldScript = document.getElementById('jsonp-script');
-            if (oldScript) oldScript.remove();
-
-            const script = document.createElement('script');
-            script.id = 'jsonp-script';
-            // GASに「handleResponseという関数でデータを返してね」と頼みます
-            script.src = `${GAS_URL}?callback=handleResponse`;
-            document.body.appendChild(script);
-        }
-
-        // GASからデータが届いた時に、自動的にこの関数が実行されます
+        // メッセージを受け取るための関数（必ず一番上に書く）
         function handleResponse(data) {
+            console.log("データを受け取りました:", data);
             if (data && data.message) {
                 document.getElementById('boardMessage').innerText = data.message;
             }
         }
 
-        // --- 3. 自動更新の設定 ---
-        // 起動時に1回実行
+        function updateMessage() {
+            const oldScript = document.getElementById('jsonp-script');
+            if (oldScript) oldScript.remove();
+            const script = document.createElement('script');
+            script.id = 'jsonp-script';
+            script.src = `${GAS_URL}?callback=handleResponse`;
+            document.body.appendChild(script);
+        }
+
+        async function sendToGas(message) {
+            showPopup("家族にお知らせしています...");
+            try {
+                await fetch(GAS_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ text: message }),
+                    headers: { 'Content-Type': 'text/plain' },
+                    redirect: "follow"
+                });
+                showPopup(message + "\nを家族に送りました！");
+            } catch (e) { showPopup("送信失敗"); }
+            setTimeout(hidePopup, 3000);
+        }
+
+        function showPopup(t) { const p = document.getElementById('notification'); p.innerText = t; p.style.display = 'block'; }
+        function hidePopup() { document.getElementById('notification').style.display = 'none'; }
+
+        // 起動時に実行
         updateMessage();
-        // 5分おきに自動更新（300000ミリ秒）
+        // 5分ごとに実行
         setInterval(updateMessage, 300000);
-
-        // --- 4. 画面表示の補助機能 ---
-        function showPopup(text) {
-            const popup = document.getElementById('notification');
-            popup.innerText = text;
-            popup.style.display = 'block';
-        }
-
-        function hidePopup() {
-            document.getElementById('notification').style.display = 'none';
-        }
     </script>
 </body>
 </html>
